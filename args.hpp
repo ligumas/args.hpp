@@ -102,7 +102,6 @@ public:
                     }
                 }
             } else if (s.size() == 2 && s[0] == '-') {
-                std::string key(1, s[1]);
                 auto* a = find_short(s[1]);
                 if (!a) throw ParseError(std::string("unknown flag: -") + s[1]);
                 if (a->is_flag) {
@@ -193,7 +192,8 @@ public:
         if (!desc_.empty()) std::cout << desc_ << "\n\n";
         std::cout << "Options:\n";
         std::cout << "  -h, --help       show this message\n";
-        for (auto& [k, a] : opts_) {
+        for (auto& k : order_) {
+            auto& a = opts_.at(k);
             std::string line = "  --" + a.name;
             if (!a.is_flag) line += " <val>";
             while (line.size() < 22) line += ' ';
