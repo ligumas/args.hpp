@@ -17,9 +17,9 @@ copy `args.hpp` into your project, done. no cmake, no install.
 
 int main(int argc, char** argv) {
     args::Parser p("mytool", "does a thing");
-    p.flag("verbose", "print more stuff");
-    p.option("output", "output file", "out.txt");
-    p.option("count", "how many", "1");
+    p.flag("verbose", "print more stuff", 'v');
+    p.option("output", "output file", "out.txt", false, 'o');
+    p.option("count", "how many", "1", false, 'n');
     p.positional("input", "input file");
 
     try {
@@ -45,19 +45,19 @@ Usage: mytool <input> [options]
 does a thing
 
 Options:
-  -h, --help       show this message
-  --verbose        print more stuff
-  --output <val>   output file (default: out.txt)
-  --count <val>    how many (default: 1)
+  -h, --help           show this message
+  -v, --verbose        print more stuff
+  -o, --output <val>   output file (default: out.txt)
+  -n, --count <val>    how many (default: 1)
 
 Positional arguments:
-  input            input file [required]
+  input                input file [required]
 ```
 
 **API:**
 
-`p.flag(name, help)` — boolean, present or not  
-`p.option(name, help, default, required)` — takes a value  
+`p.flag(name, help, short='\\0')` — boolean, present or not  
+`p.option(name, help, default, required, short='\\0')` — takes a value  
 `p.positional(name, help, required)` — positional arg  
 `p.parse(argc, argv)` — throws `ParseError` on bad input  
 `p.get(name)` — returns string value  
@@ -65,6 +65,8 @@ Positional arguments:
 `p.get_flag(name)` — returns bool  
 `p.has(name)` — was it actually provided  
 
-supports `--key=value` syntax, short flags (-v), and `--help` is built in.
+short flags must be registered explicitly — duplicate short chars throw `std::logic_error` at setup time, not silently collide at runtime.
+
+supports `--key=value` syntax and `--help` is built in.
 
 **License:** MIT

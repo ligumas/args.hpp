@@ -20,8 +20,9 @@ struct Arg {
     std::string help;
     std::string metavar;
     std::string default_val;
+    char short_name = '\0';
     bool required = false;
-    bool is_flag  = false;   // no value, just present/absent
+    bool is_flag  = false;
     bool found    = false;
     std::vector<std::string> values;
 };
@@ -31,25 +32,27 @@ public:
     explicit Parser(std::string prog = "", std::string desc = "")
         : prog_(std::move(prog)), desc_(std::move(desc)) {}
 
-    // --flag / -f  (boolean, no value)
-    Parser& flag(const std::string& name, const std::string& help = "") {
+    // --flag / -X  (boolean, no value)
+    Parser& flag(const std::string& name, const std::string& help = "", char short_name = '\0') {
         Arg a;
         a.name = name;
         a.help = help;
+        a.short_name = short_name;
         a.is_flag = true;
         add(std::move(a));
         return *this;
     }
 
-    // --opt value / -o value
+    // --opt value / -X value
     Parser& option(const std::string& name, const std::string& help = "",
-                   const std::string& def = "", bool required = false) {
+                   const std::string& def = "", bool required = false, char short_name = '\0') {
         Arg a;
         a.name = name;
         a.help = help;
         a.default_val = def;
         a.required = required;
         a.is_flag = false;
+        a.short_name = short_name;
         if (!def.empty()) a.values.push_back(def);
         add(std::move(a));
         return *this;
@@ -81,7 +84,6 @@ public:
 
             if (s.size() > 2 && s[0] == '-' && s[1] == '-') {
                 std::string key = s.substr(2);
-                // handle --key=val
                 auto eq = key.find('=');
                 if (eq != std::string::npos) {
                     std::string val = key.substr(eq + 1);
@@ -116,17 +118,15 @@ public:
             }
         }
 
-        // assign positionals
         size_t pi = 0;
-        for (auto& s : remaining) {
+        for (auto& sv : remaining) {
             if (pi < positionals_.size()) {
-                positionals_[pi].values.push_back(s);
+                positionals_[pi].values.push_back(sv);
                 positionals_[pi].found = true;
                 pi++;
             }
         }
 
-        // check required
         for (auto& [k, a] : opts_) {
             if (a.required && !a.found)
                 throw ParseError("required option missing: --" + a.name);
@@ -137,19 +137,16 @@ public:
         }
     }
 
-    // get flag (was it set?)
     bool get_flag(const std::string& name) const {
         auto it = opts_.find(name);
         if (it == opts_.end()) return false;
         return it->second.found;
     }
 
-    // get option value
     std::string get(const std::string& name) const {
         auto it = opts_.find(name);
         if (it != opts_.end() && !it->second.values.empty())
             return it->second.values[0];
-        // try positionals
         for (auto& a : positionals_)
             if (a.name == name && !a.values.empty())
                 return a.values[0];
@@ -191,12 +188,14 @@ public:
         std::cout << " [options]\n\n";
         if (!desc_.empty()) std::cout << desc_ << "\n\n";
         std::cout << "Options:\n";
-        std::cout << "  -h, --help       show this message\n";
+        std::cout << "  -h, --help           show this message\n";
         for (auto& k : order_) {
             auto& a = opts_.at(k);
-            std::string line = "  --" + a.name;
+            std::string line = "  ";
+            if (a.short_name != '\0') line += std::string("-") + a.short_name + ", --" + a.name;
+            else                      line += "    --" + a.name;
             if (!a.is_flag) line += " <val>";
-            while (line.size() < 22) line += ' ';
+            while (line.size() < 26) line += ' ';
             line += a.help;
             if (!a.default_val.empty()) line += " (default: " + a.default_val + ")";
             if (a.required) line += " [required]";
@@ -221,6 +220,11 @@ private:
     std::vector<Arg> positionals_;
 
     void add(Arg a) {
+        if (a.short_name != '\0') {
+            for (auto& [k, existing] : opts_)
+                if (existing.short_name == a.short_name)
+                    throw std::logic_error(std::string("duplicate short flag '-") + a.short_name + "'");
+        }
         order_.push_back(a.name);
         opts_[a.name] = std::move(a);
     }
@@ -232,7 +236,7 @@ private:
 
     Arg* find_short(char c) {
         for (auto& [k, a] : opts_)
-            if (!a.name.empty() && a.name[0] == c) return &a;
+            if (a.short_name == c) return &a;
         return nullptr;
     }
 };
