@@ -90,7 +90,8 @@ public:
                     key = key.substr(0, eq);
                     auto* a = find(key);
                     if (!a) throw ParseError("unknown option: --" + key);
-                    a->values = { val };
+                    if (!a->found) a->values.clear();
+                    a->values.push_back(val);
                     a->found = true;
                 } else {
                     auto* a = find(key);
@@ -99,7 +100,8 @@ public:
                         a->found = true;
                     } else {
                         if (i + 1 >= argc) throw ParseError("--" + key + " requires a value");
-                        a->values = { argv[++i] };
+                        if (!a->found) a->values.clear();
+                        a->values.push_back(argv[++i]);
                         a->found = true;
                     }
                 }
@@ -110,7 +112,8 @@ public:
                     a->found = true;
                 } else {
                     if (i + 1 >= argc) throw ParseError(std::string("-") + s[1] + " requires a value");
-                    a->values = { argv[++i] };
+                    if (!a->found) a->values.clear();
+                    a->values.push_back(argv[++i]);
                     a->found = true;
                 }
             } else {
