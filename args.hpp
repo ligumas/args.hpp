@@ -157,9 +157,8 @@ public:
     }
 
     std::optional<std::string> get_opt(const std::string& name) const {
-        std::string v = get(name);
-        if (v.empty()) return std::nullopt;
-        return v;
+        if (!has(name)) return std::nullopt;
+        return get(name);
     }
 
     template<typename T>
