@@ -18,7 +18,7 @@ copy `args.hpp` into your project, done. no cmake, no install.
 int main(int argc, char** argv) {
     args::Parser p("mytool", "does a thing");
     p.flag("verbose", "print more stuff", 'v');
-    p.option("output", "output file", "out.txt", false, 'o');
+    p.option("output", "output file", "out.txt", false, 'o', "FILE");
     p.option("count", "how many", "1", false, 'n');
     p.positional("input", "input file");
 
@@ -47,23 +47,27 @@ does a thing
 Options:
   -h, --help           show this message
   -v, --verbose        print more stuff
-  -o, --output <val>   output file (default: out.txt)
+  -o, --output <FILE>  output file (default: out.txt)
   -n, --count <val>    how many (default: 1)
 
 Positional arguments:
-  input                input file [required]
+  input               input file [required]
 ```
 
 **API:**
 
-`p.flag(name, help, short='\\0')` — boolean, present or not  
-`p.option(name, help, default, required, short='\\0')` — takes a value  
+`p.flag(name, help, short='\0')` — boolean, present or not  
+`p.option(name, help, default, required, short='\0', metavar="")` — takes a value  
 `p.positional(name, help, required)` — positional arg  
 `p.parse(argc, argv)` — throws `ParseError` on bad input  
 `p.get(name)` — returns string value  
 `p.get_as<T>(name)` — returns T via `>>` conversion  
 `p.get_flag(name)` — returns bool  
 `p.has(name)` — was it actually provided  
+`p.get_opt(name)` — returns `std::optional<std::string>`, nullopt if not provided  
+`p.get_all(name)` — returns all values (for repeated options)  
+
+`metavar` controls the placeholder shown in `--help`. `"FILE"` → `--output <FILE>`. defaults to `val`.
 
 short flags must be registered explicitly — duplicate short chars throw `std::logic_error` at setup time, not silently collide at runtime.
 
