@@ -44,8 +44,10 @@ public:
     }
 
     // --opt value / -X value
+    // metavar controls the placeholder shown in --help (e.g. "FILE" → --output <FILE>)
     Parser& option(const std::string& name, const std::string& help = "",
-                   const std::string& def = "", bool required = false, char short_name = '\0') {
+                   const std::string& def = "", bool required = false, char short_name = '\0',
+                   const std::string& metavar = "") {
         Arg a;
         a.name = name;
         a.help = help;
@@ -53,6 +55,7 @@ public:
         a.required = required;
         a.is_flag = false;
         a.short_name = short_name;
+        a.metavar = metavar.empty() ? "val" : metavar;
         if (!def.empty()) a.values.push_back(def);
         add(std::move(a));
         return *this;
@@ -196,7 +199,7 @@ public:
             std::string line = "  ";
             if (a.short_name != '\0') line += std::string("-") + a.short_name + ", --" + a.name;
             else                      line += "    --" + a.name;
-            if (!a.is_flag) line += " <val>";
+            if (!a.is_flag) line += " <" + a.metavar + ">";
             while (line.size() < 26) line += ' ';
             line += a.help;
             if (!a.default_val.empty()) line += " (default: " + a.default_val + ")";
