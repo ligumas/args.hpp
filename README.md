@@ -73,4 +73,7 @@ short flags must be registered explicitly — duplicate short chars throw `std::
 
 supports `--key=value` syntax and `--help` is built in.
 
+`--` ends option parsing — everything after it is treated as a positional argument.
+
 **License:** MIT
+

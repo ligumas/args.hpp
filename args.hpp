@@ -76,9 +76,20 @@ public:
     void parse(int argc, char** argv) {
         if (prog_.empty() && argc > 0) prog_ = argv[0];
         std::vector<std::string> remaining;
+        bool end_of_opts = false;
 
         for (int i = 1; i < argc; i++) {
             std::string s = argv[i];
+
+            if (end_of_opts) {
+                remaining.push_back(s);
+                continue;
+            }
+
+            if (s == "--") {
+                end_of_opts = true;
+                continue;
+            }
 
             if (s == "--help" || s == "-h") {
                 print_help();

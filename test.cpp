@@ -7,6 +7,8 @@ int ok = 0, fail = 0;
 
 void make_argv(std::vector<const char*>& av, std::vector<std::string>& storage, std::initializer_list<const char*> args) {
     storage.clear(); av.clear();
+    storage.reserve(args.size());
+    av.reserve(args.size());
     for (auto s : args) { storage.push_back(s); av.push_back(storage.back().c_str()); }
 }
 
@@ -106,6 +108,43 @@ void test_has() {
     check(!p.has("output"), "has unset option");
 }
 
+void test_dashdash_makes_flag_positional() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "--", "-v"});
+    args::Parser p;
+    p.flag("verbose", "verbose", 'v');
+    p.positional("input", "input file");
+    p.parse((int)av.size(), (char**)av.data());
+    check(!p.get_flag("verbose"), "flag after -- not parsed as flag");
+    check(p.get("input") == "-v", "arg after -- becomes positional");
+}
+
+void test_dashdash_mixed() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "-v", "--", "--output"});
+    args::Parser p;
+    p.flag("verbose", "verbose", 'v');
+    p.positional("input", "input file");
+    p.parse((int)av.size(), (char**)av.data());
+    check(p.get_flag("verbose"), "flag before -- still parsed");
+    check(p.get("input") == "--output", "long-opt after -- is positional");
+}
+
+void test_dashdash_unknown_after_is_not_error() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "--", "--not-a-flag"});
+    args::Parser p;
+    p.positional("file", "some file");
+    bool threw = false;
+    try { p.parse((int)av.size(), (char**)av.data()); }
+    catch (const args::ParseError&) { threw = true; }
+    check(!threw, "-- prevents ParseError for unknown-looking arg");
+    check(p.get("file") == "--not-a-flag", "positional has correct value after --");
+}
+
 int main() {
     test_basic_flag();
     test_option_value();
@@ -116,6 +155,9 @@ int main() {
     test_required_missing();
     test_unknown_flag();
     test_has();
+    test_dashdash_makes_flag_positional();
+    test_dashdash_mixed();
+    test_dashdash_unknown_after_is_not_error();
 
     std::cout << ok << "/" << (ok + fail) << " tests passed\n";
     return fail == 0 ? 0 : 1;
