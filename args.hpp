@@ -119,16 +119,27 @@ public:
                         a->found = true;
                     }
                 }
-            } else if (s.size() == 2 && s[0] == '-') {
-                auto* a = find_short(s[1]);
-                if (!a) throw ParseError(std::string("unknown flag: -") + s[1]);
-                if (a->is_flag) {
-                    a->found = true;
-                } else {
-                    if (i + 1 >= argc) throw ParseError(std::string("-") + s[1] + " requires a value");
-                    if (!a->found) a->values.clear();
-                    a->values.push_back(argv[++i]);
-                    a->found = true;
+            } else if (s.size() >= 2 && s[0] == '-' && s[1] != '-') {
+                // POSIX combined short flags: -abc, -vn 5, -n5, -Ifoo
+                for (size_t ci = 1; ci < s.size(); ci++) {
+                    auto* a = find_short(s[ci]);
+                    if (!a) throw ParseError(std::string("unknown flag: -") + s[ci]);
+                    if (a->is_flag) {
+                        a->found = true;
+                    } else {
+                        // option takes a value: rest of token (-n5) or next arg (-n 5)
+                        if (ci + 1 < s.size()) {
+                            if (!a->found) a->values.clear();
+                            a->values.push_back(s.substr(ci + 1));
+                            a->found = true;
+                        } else {
+                            if (i + 1 >= argc) throw ParseError(std::string("-") + s[ci] + " requires a value");
+                            if (!a->found) a->values.clear();
+                            a->values.push_back(argv[++i]);
+                            a->found = true;
+                        }
+                        break; // option with value consumes the rest of the token
+                    }
                 }
             } else {
                 remaining.push_back(s);
