@@ -152,6 +152,8 @@ public:
                 positionals_[pi].values.push_back(sv);
                 positionals_[pi].found = true;
                 pi++;
+            } else {
+                remaining_.push_back(sv);
             }
         }
 
@@ -203,6 +205,8 @@ public:
         return {};
     }
 
+    const std::vector<std::string>& get_remaining() const { return remaining_; }
+
     bool has(const std::string& name) const {
         auto it = opts_.find(name);
         if (it != opts_.end()) return it->second.found;
@@ -247,6 +251,7 @@ private:
     std::unordered_map<std::string, Arg> opts_;
     std::vector<std::string> order_;
     std::vector<Arg> positionals_;
+    std::vector<std::string> remaining_;
 
     void add(Arg a) {
         if (a.short_name != '\0') {

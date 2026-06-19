@@ -66,6 +66,7 @@ Positional arguments:
 `p.has(name)` — was it actually provided  
 `p.get_opt(name)` — returns `std::optional<std::string>`, nullopt if not provided  
 `p.get_all(name)` — returns all values (for repeated options)  
+`p.get_remaining()` — returns positional args that had no matching `positional()` slot (useful for variadic file lists)  
 
 `metavar` controls the placeholder shown in `--help`. `"FILE"` → `--output <FILE>`. defaults to `val`.
 
