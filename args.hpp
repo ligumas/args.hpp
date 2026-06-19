@@ -191,7 +191,9 @@ public:
         std::string v = get(name);
         if (v.empty()) return T{};
         T result;
-        std::istringstream(v) >> result;
+        std::istringstream iss(v);
+        if (!(iss >> result) || !iss.eof())
+            throw ParseError("bad value for --" + name + ": " + v);
         return result;
     }
 
@@ -269,3 +271,4 @@ private:
 };
 
 } // namespace args
+
