@@ -145,6 +145,106 @@ void test_dashdash_unknown_after_is_not_error() {
     check(p.get("file") == "--not-a-flag", "positional has correct value after --");
 }
 
+void test_get_remaining_no_positionals() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "file1", "file2", "file3"});
+    args::Parser p;
+    p.parse((int)av.size(), (char**)av.data());
+    auto rem = p.get_remaining();
+    check(rem.size() == 3, "get_remaining: 3 files with no positionals declared");
+    check(rem[0] == "file1" && rem[1] == "file2" && rem[2] == "file3", "get_remaining: correct values");
+}
+
+void test_get_remaining_partial() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "src1", "src2", "dest"});
+    args::Parser p;
+    p.positional("dest", "destination");
+    p.parse((int)av.size(), (char**)av.data());
+    check(p.get("dest") == "src1", "positional gets first arg");
+    auto rem = p.get_remaining();
+    check(rem.size() == 2, "get_remaining: 2 leftover after positional consumed");
+    check(rem[0] == "src2" && rem[1] == "dest", "get_remaining: correct leftover values");
+}
+
+void test_short_flag() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "-v"});
+    args::Parser p;
+    p.flag("verbose", "verbose", 'v');
+    p.parse((int)av.size(), (char**)av.data());
+    check(p.get_flag("verbose"), "short flag -v sets verbose");
+}
+
+void test_short_option_space() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "-o", "result.txt"});
+    args::Parser p;
+    p.option("output", "output file", "", false, 'o');
+    p.parse((int)av.size(), (char**)av.data());
+    check(p.get("output") == "result.txt", "short option -o result.txt");
+}
+
+void test_short_option_glued() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "-n42"});
+    args::Parser p;
+    p.option("count", "count", "", false, 'n');
+    p.parse((int)av.size(), (char**)av.data());
+    check(p.get_as<int>("count") == 42, "short option -n42 glued");
+}
+
+void test_combined_short_flags() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "-vd"});
+    args::Parser p;
+    p.flag("verbose", "verbose", 'v');
+    p.flag("debug", "debug", 'd');
+    p.parse((int)av.size(), (char**)av.data());
+    check(p.get_flag("verbose"), "combined -vd: verbose set");
+    check(p.get_flag("debug"), "combined -vd: debug set");
+}
+
+void test_get_all_repeated() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "--include", "a", "--include", "b", "--include", "c"});
+    args::Parser p;
+    p.option("include", "include path");
+    p.parse((int)av.size(), (char**)av.data());
+    auto vals = p.get_all("include");
+    check(vals.size() == 3, "get_all: 3 repeated options");
+    check(vals[0] == "a" && vals[1] == "b" && vals[2] == "c", "get_all: correct values");
+}
+
+void test_get_opt_present() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog", "--name", "jasper"});
+    args::Parser p;
+    p.option("name", "name");
+    p.parse((int)av.size(), (char**)av.data());
+    auto v = p.get_opt("name");
+    check(v.has_value() && *v == "jasper", "get_opt: present option has value");
+}
+
+void test_get_opt_absent() {
+    std::vector<const char*> av;
+    std::vector<std::string> st;
+    make_argv(av, st, {"prog"});
+    args::Parser p;
+    p.option("name", "name");
+    p.parse((int)av.size(), (char**)av.data());
+    auto v = p.get_opt("name");
+    check(!v.has_value(), "get_opt: absent option returns nullopt");
+}
+
 int main() {
     test_basic_flag();
     test_option_value();
@@ -158,6 +258,15 @@ int main() {
     test_dashdash_makes_flag_positional();
     test_dashdash_mixed();
     test_dashdash_unknown_after_is_not_error();
+    test_get_remaining_no_positionals();
+    test_get_remaining_partial();
+    test_short_flag();
+    test_short_option_space();
+    test_short_option_glued();
+    test_combined_short_flags();
+    test_get_all_repeated();
+    test_get_opt_present();
+    test_get_opt_absent();
 
     std::cout << ok << "/" << (ok + fail) << " tests passed\n";
     return fail == 0 ? 0 : 1;
