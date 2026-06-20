@@ -217,7 +217,8 @@ public:
 
     void print_help() const {
         std::cout << "Usage: " << prog_;
-        for (auto& a : positionals_) std::cout << " <" << a.name << ">";
+        for (auto& a : positionals_)
+            std::cout << (a.required ? " <" : " [") << a.name << (a.required ? ">" : "]");
         std::cout << " [options]\n\n";
         if (!desc_.empty()) std::cout << desc_ << "\n\n";
         std::cout << "Options:\n";
