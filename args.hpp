@@ -229,7 +229,7 @@ public:
             if (a.short_name != '\0') line += std::string("-") + a.short_name + ", --" + a.name;
             else                      line += "    --" + a.name;
             if (!a.is_flag) line += " <" + a.metavar + ">";
-            while (line.size() < 26) line += ' ';
+            line.resize(std::max(line.size() + 1, (size_t)26), ' ');
             line += a.help;
             if (!a.default_val.empty()) line += " (default: " + a.default_val + ")";
             if (a.required) line += " [required]";
@@ -239,7 +239,7 @@ public:
             std::cout << "\nPositional arguments:\n";
             for (auto& a : positionals_) {
                 std::string line = "  " + a.name;
-                while (line.size() < 22) line += ' ';
+                line.resize(std::max(line.size() + 1, (size_t)22), ' ');
                 line += a.help;
                 if (a.required) line += " [required]";
                 std::cout << line << "\n";
