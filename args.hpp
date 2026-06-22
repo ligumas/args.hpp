@@ -3,11 +3,11 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <functional>
 #include <sstream>
 #include <stdexcept>
 #include <iostream>
 #include <optional>
+#include <algorithm>
 
 namespace args {
 
@@ -25,6 +25,7 @@ struct Arg {
     bool is_flag  = false;
     bool found    = false;
     std::vector<std::string> values;
+    std::vector<std::string> choices;
 };
 
 class Parser {
@@ -73,6 +74,17 @@ public:
         return *this;
     }
 
+    // restrict an option to a fixed set of valid values
+    Parser& choices(const std::string& name, std::vector<std::string> vals) {
+        auto it = opts_.find(name);
+        if (it == opts_.end())
+            throw std::logic_error("unknown option for choices(): " + name);
+        if (it->second.is_flag)
+            throw std::logic_error("choices() not valid for flags: " + name);
+        it->second.choices = std::move(vals);
+        return *this;
+    }
+
     void parse(int argc, char** argv) {
         if (prog_.empty() && argc > 0) prog_ = argv[0];
         std::vector<std::string> remaining;
@@ -104,9 +116,7 @@ public:
                     key = key.substr(0, eq);
                     auto* a = find(key);
                     if (!a) throw ParseError("unknown option: --" + key);
-                    if (!a->found) a->values.clear();
-                    a->values.push_back(val);
-                    a->found = true;
+                    set_value(a, val);
                 } else {
                     auto* a = find(key);
                     if (!a) throw ParseError("unknown option: --" + key);
@@ -114,9 +124,7 @@ public:
                         a->found = true;
                     } else {
                         if (i + 1 >= argc) throw ParseError("--" + key + " requires a value");
-                        if (!a->found) a->values.clear();
-                        a->values.push_back(argv[++i]);
-                        a->found = true;
+                        set_value(a, argv[++i]);
                     }
                 }
             } else if (s.size() >= 2 && s[0] == '-' && s[1] != '-') {
@@ -129,14 +137,10 @@ public:
                     } else {
                         // option takes a value: rest of token (-n5) or next arg (-n 5)
                         if (ci + 1 < s.size()) {
-                            if (!a->found) a->values.clear();
-                            a->values.push_back(s.substr(ci + 1));
-                            a->found = true;
+                            set_value(a, s.substr(ci + 1));
                         } else {
                             if (i + 1 >= argc) throw ParseError(std::string("-") + s[ci] + " requires a value");
-                            if (!a->found) a->values.clear();
-                            a->values.push_back(argv[++i]);
-                            a->found = true;
+                            set_value(a, argv[++i]);
                         }
                         break; // option with value consumes the rest of the token
                     }
@@ -228,7 +232,18 @@ public:
             std::string line = "  ";
             if (a.short_name != '\0') line += std::string("-") + a.short_name + ", --" + a.name;
             else                      line += "    --" + a.name;
-            if (!a.is_flag) line += " <" + a.metavar + ">";
+            if (!a.is_flag) {
+                if (!a.choices.empty()) {
+                    std::string cs;
+                    for (size_t i = 0; i < a.choices.size(); i++) {
+                        if (i) cs += "|";
+                        cs += a.choices[i];
+                    }
+                    line += " <" + cs + ">";
+                } else {
+                    line += " <" + a.metavar + ">";
+                }
+            }
             line.resize(std::max(line.size() + 1, (size_t)26), ' ');
             line += a.help;
             if (!a.default_val.empty()) line += " (default: " + a.default_val + ")";
@@ -254,6 +269,24 @@ private:
     std::vector<Arg> positionals_;
     std::vector<std::string> remaining_;
 
+    void set_value(Arg* a, const std::string& val) {
+        if (!a->choices.empty()) {
+            auto it = std::find(a->choices.begin(), a->choices.end(), val);
+            if (it == a->choices.end()) {
+                std::string list;
+                for (size_t i = 0; i < a->choices.size(); i++) {
+                    if (i) list += ", ";
+                    list += a->choices[i];
+                }
+                throw ParseError("--" + a->name + ": invalid value '" + val +
+                                 "', expected one of: " + list);
+            }
+        }
+        if (!a->found) a->values.clear();
+        a->values.push_back(val);
+        a->found = true;
+    }
+
     void add(Arg a) {
         if (a.short_name != '\0') {
             for (auto& [k, existing] : opts_)
@@ -277,4 +310,3 @@ private:
 };
 
 } // namespace args
-
