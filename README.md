@@ -60,6 +60,7 @@ Positional arguments:
 `p.flag(name, help, short='\0')` — boolean, present or not  
 `p.option(name, help, default, required, short='\0', metavar="")` — takes a value  
 `p.positional(name, help, required)` — positional arg  
+`p.choices(name, {val, ...})` — restrict option to a fixed set of values  
 `p.parse(argc, argv)` — throws `ParseError` on bad input  
 `p.get(name)` — returns string value  
 `p.get_as<T>(name)` — returns T via `>>` conversion  
@@ -77,5 +78,23 @@ supports `--key=value` syntax and `--help` is built in.
 
 `--` ends option parsing — everything after it is treated as a positional argument.
 
-**License:** MIT
+**value choices:**
 
+restrict an option to a fixed set of valid values:
+
+```cpp
+args::Parser p("convert", "convert files");
+p.option("format", "output format", "json");
+p.choices("format", {"json", "xml", "csv"});
+p.parse(argc, argv);
+```
+
+`--help` shows `--format <json|xml|csv>`. bad input gives a clear error:
+
+```
+--format: invalid value 'toml', expected one of: json, xml, csv
+```
+
+works with all forms: `--format xml`, `--format=xml`, `-f xml`, `-fxml`.
+
+**License:** MIT
